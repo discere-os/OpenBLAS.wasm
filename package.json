@@ -1,0 +1,36 @@
+{
+  "name": "OpenBLAS.wasm",
+  "version": "0.3.28",
+  "type": "module",
+  "description": "OpenBLAS optimized BLAS library compiled to WebAssembly",
+  "main": "dist/node/index.js",
+  "module": "dist/browser-es6/index.js",
+  "scripts": {
+    "build": "npm run build:simd && npm run build:fallback",
+    "build:simd": "mkdir -p build dist/browser-simd && cd build && emcc -O3 -msimd128 -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORTED_FUNCTIONS='[\"_blas_dgemm\",\"_blas_sgemm\",\"_blas_ddot\",\"_blas_sdot\",\"_blas_daxpy\",\"_blas_saxpy\",\"_blas_dnrm2\",\"_blas_snrm2\",\"_blas_dscal\",\"_blas_sscal\",\"_blas_has_simd\",\"_blas_benchmark_sgemm\",\"_blas_get_performance_info\",\"_blas_get_version\",\"_blas_get_num_threads\",\"_blas_set_num_threads\",\"_malloc\",\"_free\"]' -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"HEAPU8\",\"HEAPF32\",\"HEAPF64\"]' -s INITIAL_MEMORY=32MB -s MAXIMUM_MEMORY=512MB -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=4MB -s ASSERTIONS=0 --closure 1 -flto ../src/wasm_module_simd.c -o openblas-simd.js && cp openblas-simd.* ../dist/browser-simd/",
+    "build:fallback": "mkdir -p build dist/browser-fallback && cd build && emcc -O3 -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORTED_FUNCTIONS='[\"_blas_dgemm\",\"_blas_sgemm\",\"_blas_ddot\",\"_blas_sdot\",\"_blas_daxpy\",\"_blas_saxpy\",\"_blas_dnrm2\",\"_blas_snrm2\",\"_blas_dscal\",\"_blas_sscal\",\"_blas_has_simd\",\"_blas_benchmark_sgemm\",\"_blas_get_performance_info\",\"_blas_get_version\",\"_blas_get_num_threads\",\"_blas_set_num_threads\",\"_malloc\",\"_free\"]' -s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"HEAPU8\",\"HEAPF32\",\"HEAPF64\"]' -s INITIAL_MEMORY=32MB -s MAXIMUM_MEMORY=512MB -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=4MB -s ASSERTIONS=0 --closure 1 -flto ../src/wasm_module_simd.c -o openblas-fallback.js && cp openblas-fallback.* ../dist/browser-fallback/",
+    "build:wasm": "npm run build:simd",
+    "test": "node test/performance_test.js",
+    "dev": "python3 -m http.server 3000"
+  },
+  "keywords": [
+    "openblas",
+    "blas",
+    "linear-algebra",
+    "wasm",
+    "webassembly",
+    "numerical-computing"
+  ],
+  "author": "WASM Ecosystem Contributors",
+  "license": "BSD-3-Clause",
+  "files": [
+    "build/",
+    "dist/",
+    "src/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superstruct/OpenBLAS.wasm.git"
+  },
+  "homepage": "https://github.com/superstruct/OpenBLAS.wasm"
+}
