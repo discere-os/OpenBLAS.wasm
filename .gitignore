@@ -117,26 +117,46 @@ CMakeFiles/*
 .vscode
 **/__pycache__
 
-# WASM build artifacts
+# WASM-Native Build System (Dual Architecture)
+build-side/
+build-main/
+build-dual/
+install/
 dist/
-build-wasm*/
+npm/
+
+# WASM artifacts
 *.wasm
+*.js
 *.js.mem
 *.js.symbols
 *.js.temp
 *.wast
 *.wat
+*.js.map
+
+# Exception: Keep shell scripts
+!build-dual.sh
+!*.config.js
 
 # Emscripten cache and tools
 emsdk/
 emsdk_env.sh
 .emscripten_cache/
+.emscripten_ports/
+/cache/
 
-# Node.js and NPM  
+# Deno-first development
+.deno/
+deno.lock
+.deno_cache/
+
+# Node.js and NPM compatibility
 node_modules/
 package-lock.json
 yarn.lock
 npm-debug.log*
+*.log
 
 # Testing and CI artifacts
 test-results/
@@ -144,7 +164,38 @@ benchmark-results/
 coverage/
 .nyc_output/
 build-logs/
+perf-data/
+*.perfdata
+*.bench.json
 
 # Development tools
 .vscode/
 .idea/
+
+# TypeScript compilation (using Deno-first, no .js files)
+# All .js files ignored except build scripts above
+
+# Temporary and OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+*~
+.tmp/
+tmp/
+temp/
+
+# Environment and local config
+.env
+.env.local
+.env.*.local
+local.config.*
+
+# Performance monitoring
+*.prof
+*.gprof
+*.perf
+
+# CDN deployment artifacts
+.cdn-sync/
+cdn-upload/
