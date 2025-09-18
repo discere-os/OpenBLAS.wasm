@@ -571,7 +571,7 @@ export default class OpenBLAS implements IOpenBLAS {
 
   /**
    * Call a BLAS function with error handling
-   * Handles memory allocation for TypedArrays
+   * Uses explicit memory allocation and direct function calls
    */
   private callBlasFunction(functionName: string, ...args: any[]): any {
     try {
@@ -580,21 +580,23 @@ export default class OpenBLAS implements IOpenBLAS {
         throw new Error(`Function ${functionName} not found in module`);
       }
 
-      // Convert TypedArrays to WASM heap pointers
-      const wasmArgs = args.map(arg => {
+      // Allocate memory for TypedArrays and convert to pointers
+      const allocatedPointers: number[] = [];
+      const processedArgs = args.map(arg => {
         if (arg instanceof Float32Array || arg instanceof Float64Array) {
-          return this.allocateWasmArray(arg);
+          const ptr = this.allocateAndCopyToWasm(arg);
+          allocatedPointers.push(ptr);
+          return ptr;
         }
         return arg;
       });
 
-      const result = fn(...wasmArgs);
+      // Call the function with processed arguments
+      const result = fn(...processedArgs);
 
       // Clean up allocated memory
-      wasmArgs.forEach((arg, i) => {
-        if (args[i] instanceof Float32Array || args[i] instanceof Float64Array) {
-          this.module._free(arg);
-        }
+      allocatedPointers.forEach(ptr => {
+        this.module._free(ptr);
       });
 
       return result;
@@ -604,9 +606,9 @@ export default class OpenBLAS implements IOpenBLAS {
   }
 
   /**
-   * Allocate TypedArray in WASM heap and return pointer
+   * Allocate WASM memory and copy TypedArray data to it
    */
-  private allocateWasmArray(typedArray: Float32Array | Float64Array): number {
+  private allocateAndCopyToWasm(typedArray: Float32Array | Float64Array): number {
     const bytesPerElement = typedArray.BYTES_PER_ELEMENT;
     const bytes = typedArray.length * bytesPerElement;
     const ptr = this.module._malloc(bytes);
@@ -615,13 +617,13 @@ export default class OpenBLAS implements IOpenBLAS {
       throw new Error('Failed to allocate WASM memory');
     }
 
-    // Copy data to WASM heap
+    // Copy data to WASM heap using the appropriate heap view
     if (typedArray instanceof Float32Array) {
-      const heapArray = new Float32Array(this.module.HEAPF32.buffer, ptr, typedArray.length);
-      heapArray.set(typedArray);
+      const heapOffset = ptr >> 2; // Divide by 4 for 32-bit floats
+      this.module.HEAPF32.set(typedArray, heapOffset);
     } else {
-      const heapArray = new Float64Array(this.module.HEAPF64.buffer, ptr, typedArray.length);
-      heapArray.set(typedArray);
+      const heapOffset = ptr >> 3; // Divide by 8 for 64-bit doubles
+      this.module.HEAPF64.set(typedArray, heapOffset);
     }
 
     return ptr;
@@ -630,18 +632,21 @@ export default class OpenBLAS implements IOpenBLAS {
   /**
    * Copy data back from WASM heap to TypedArray (for in-place operations)
    */
-  private copyFromWasmArray(ptr: number, typedArray: Float32Array | Float64Array): void {
+  private copyFromWasmToArray(ptr: number, typedArray: Float32Array | Float64Array): void {
     if (typedArray instanceof Float32Array) {
-      const heapArray = new Float32Array(this.module.HEAPF32.buffer, ptr, typedArray.length);
-      typedArray.set(heapArray);
+      const heapOffset = ptr >> 2; // Divide by 4 for 32-bit floats
+      const heapSlice = this.module.HEAPF32.subarray(heapOffset, heapOffset + typedArray.length);
+      typedArray.set(heapSlice);
     } else {
-      const heapArray = new Float64Array(this.module.HEAPF64.buffer, ptr, typedArray.length);
-      typedArray.set(heapArray);
+      const heapOffset = ptr >> 3; // Divide by 8 for 64-bit doubles
+      const heapSlice = this.module.HEAPF64.subarray(heapOffset, heapOffset + typedArray.length);
+      typedArray.set(heapSlice);
     }
   }
 
   /**
    * Call a BLAS function that modifies arrays in place
+   * Uses explicit memory allocation and handles in-place modifications
    */
   private callBlasInPlaceFunction(functionName: string, modifiedArray: Float32Array | Float64Array, ...args: any[]): any {
     try {
@@ -650,33 +655,36 @@ export default class OpenBLAS implements IOpenBLAS {
         throw new Error(`Function ${functionName} not found in module`);
       }
 
-      // Convert TypedArrays to WASM heap pointers
-      const wasmArgs = args.map(arg => {
+      // Allocate memory for TypedArrays and convert to pointers
+      const allocatedPointers: number[] = [];
+      let modifiedPtr: number | undefined;
+
+      const processedArgs = args.map(arg => {
         if (arg instanceof Float32Array || arg instanceof Float64Array) {
-          return this.allocateWasmArray(arg);
+          const ptr = this.allocateAndCopyToWasm(arg);
+          allocatedPointers.push(ptr);
+
+          // Track which pointer corresponds to the array that should be modified
+          if (arg === modifiedArray) {
+            modifiedPtr = ptr;
+          }
+
+          return ptr;
         }
         return arg;
       });
 
-      const result = fn(...wasmArgs);
+      // Call the function with processed arguments
+      const result = fn(...processedArgs);
 
       // Copy modified data back to the original array
-      let modifiedPtr: number | undefined;
-      args.forEach((arg, i) => {
-        if (arg === modifiedArray && (arg instanceof Float32Array || arg instanceof Float64Array)) {
-          modifiedPtr = wasmArgs[i];
-        }
-      });
-
       if (modifiedPtr !== undefined) {
-        this.copyFromWasmArray(modifiedPtr, modifiedArray);
+        this.copyFromWasmToArray(modifiedPtr, modifiedArray);
       }
 
       // Clean up allocated memory
-      wasmArgs.forEach((arg, i) => {
-        if (args[i] instanceof Float32Array || args[i] instanceof Float64Array) {
-          this.module._free(arg);
-        }
+      allocatedPointers.forEach(ptr => {
+        this.module._free(ptr);
       });
 
       return result;

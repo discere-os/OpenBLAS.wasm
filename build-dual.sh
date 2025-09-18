@@ -152,7 +152,7 @@ build_main_module() {
     -sEXPORT_NAME=OpenBLASModule
     -sSINGLE_FILE=0
     -sEXPORTED_FUNCTIONS=$EXPORTED_FUNCTIONS
-    -sEXPORTED_RUNTIME_METHODS=[\"cwrap\",\"ccall\",\"UTF8ToString\",\"lengthBytesUTF8\"]
+    -sEXPORTED_RUNTIME_METHODS=[\"cwrap\",\"ccall\",\"UTF8ToString\",\"lengthBytesUTF8\",\"setValue\",\"getValue\",\"HEAP8\",\"HEAP16\",\"HEAP32\",\"HEAPU8\",\"HEAPU16\",\"HEAPU32\",\"HEAPF32\",\"HEAPF64\"]
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=33554432
     -sMAXIMUM_MEMORY=536870912
